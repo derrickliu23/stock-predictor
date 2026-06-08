@@ -68,12 +68,20 @@ def train(df: pd.DataFrame, ticker: str) -> dict:
     loader  = DataLoader(dataset, batch_size=32, shuffle=False)
 
     model = LSTMModel(input_size=X_train.shape[2])
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)  # was 0.001
-    loss_fn = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.002)  # was 0.001
+    def directional_loss(pred, actual):
+        mse = nn.MSELoss()(pred, actual)
+        # penalize when predicted direction is wrong
+        direction_penalty = torch.mean(
+            torch.clamp(-pred * actual, min=0)
+        )
+        return mse + 0.3 * direction_penalty
+
+    loss_fn = directional_loss
 
     best_loss = float("inf")
-    patience, patience_counter = 10, 0
-
+    patience, patience_counter = 20, 0  # was 10
+    
     print(f"Training on {len(X_train)} samples, testing on {len(X_test)}")
 
     for epoch in range(1, 101):
